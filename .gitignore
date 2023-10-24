@@ -5,4 +5,5 @@
 !/cpu/
 !/cpu/o3/
 !/cpu/o3/*
-
+!/cpu/pred/
+!/cpu/pred/*
