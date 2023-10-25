@@ -7,7 +7,7 @@
 GShareBP::GShareBP(const GShareBPParams *params)
     : BPredUnit(params),
       gshareBitCount(params->historyBitCount),
-      hashOffset(2),
+      hashOffset(0),
       satCounters(1 << params->historyBitCount, SatCounter(2)),
       globalHistory(params->numThreads, 0)
 {
