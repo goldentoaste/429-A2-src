@@ -5,39 +5,105 @@
 #include "debug/Fetch.hh"
 
 GShareBP::GShareBP(const GShareBPParams *params)
-    : BPredUnit(params)
+    : BPredUnit(params),
+      gshareBitCount(params->historyBitCount),
+      hashOffset(2),
+      satCounters(1 << params->historyBitCount, SatCounter(2)),
+      globalHistory(params->numThreads, 0)
 {
-    
+    // compute bit bit mask to extract history
+    historyBitMask = (1 << gshareBitCount) - 1;
+
+    // init pc bit mask, has gshareBitCount number of 1s, then shift by hashOffset
+    pcBitMask = ((1 << gshareBitCount) - 1) << hashOffset;
 }
 
-void GShareBP::btbUpdate(ThreadID tid, Addr branch_addr, void * &bp_history)
+inline void GShareBP::updateGlobalHistTaken(ThreadID tid)
 {
-
+    globalHistory[tid] = (globalHistory[tid] << 1) | 1;
+    globalHistory[tid] = globalHistory[tid] & historyBitMask;
 }
 
-bool GShareBP::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
+inline void GShareBP::updateGlobalHistNotTaken(ThreadID tid)
 {
-    return true;
+    globalHistory[tid] = (globalHistory[tid] << 1);
+    globalHistory[tid] = globalHistory[tid] & historyBitMask;
 }
 
-void GShareBP::uncondBranch(ThreadID tid, Addr branch_addr, void * &bp_history)
+void GShareBP::btbUpdate(ThreadID tid, Addr branch_addr, void *&bp_history)
 {
-
+    // set the last prediction to false in case of bad btb
+    globalHistory[tid] = globalHistory[tid] & (historyBitMask & ~1ULL);
 }
 
-void GShareBP::update(ThreadID tid, Addr branch_addr, bool taken, 
-					  void *bp_history, bool squashed, 
-					  const StaticInstPtr & inst, Addr corrTarget)
+bool GShareBP::lookup(ThreadID tid, Addr branch_addr, void *&bp_history)
 {
+    // offsetted pc bits xor history bits
+    unsigned satCounterIndex = ((branch_addr & pcBitMask) >> hashOffset) ^ globalHistory[tid];
+    bool taken = satCounters[satCounterIndex] > 1; // 00 = strong no take, 01 = weak no take, 10 - 2 or higher we take
 
+    GShareHistory *history = new GShareHistory;
+    history->historyBackup = globalHistory[tid];
+    history->predTaken = taken;
+    bp_history = static_cast<void *>(history);
+
+    if (taken)
+    {
+        updateGlobalHistTaken(tid);
+    }
+    else
+    {
+        updateGlobalHistNotTaken(tid);
+    }
+    return taken;
 }
 
-void GShareBP::squash(ThreadID tid, void *bp_history) 
+void GShareBP::uncondBranch(ThreadID tid, Addr branch_addr, void *&bp_history)
 {
-
+    GShareHistory *history = new GShareHistory;
+    history->historyBackup = globalHistory[tid];
+    history->predTaken = true;
+    bp_history = static_cast<void *>(history);
+    updateGlobalHistTaken(tid);
 }
 
-GShareBP*
+void GShareBP::update(ThreadID tid, Addr branch_addr, bool taken,
+                      void *bp_history, bool squashed,
+                      const StaticInstPtr &inst, Addr corrTarget)
+{
+    GShareHistory *history = static_cast<GShareHistory *>(bp_history);
+    unsigned historySnapshot = history->historyBackup & historyBitMask;
+    unsigned satCounterIndex =
+        ((branch_addr & pcBitMask) >> hashOffset) ^ historySnapshot;
+
+    if (taken)
+    {
+        satCounters[satCounterIndex]++;
+    }
+    else
+    {
+        satCounters[satCounterIndex]--;
+    }
+
+    if (squashed)
+    {
+        globalHistory[tid] = (history->historyBackup << 1) | taken;
+        globalHistory[tid] = globalHistory[tid] & historyBitMask;
+    }
+    else
+    {
+        delete history;
+    }
+}
+
+void GShareBP::squash(ThreadID tid, void *bp_history)
+{
+    GShareHistory *history = static_cast<GShareHistory *>(bp_history);
+    globalHistory[tid] = history->historyBackup;
+    delete history;
+}
+
+GShareBP *
 GShareBPParams::create()
 {
     return new GShareBP(this);

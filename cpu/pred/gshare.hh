@@ -69,6 +69,11 @@ public:
   void squash(ThreadID tid, void *bp_history);
 
 private:
+  /** Updates global history as taken. */
+  inline void updateGlobalHistTaken(ThreadID tid);
+
+  /** Updates global history as not taken. */
+  inline void updateGlobalHistNotTaken(ThreadID tid);
   struct GShareHistory
   {
     unsigned historyBackup;
@@ -84,11 +89,14 @@ private:
   // bit mask to retrieve bits from the global history
   unsigned historyBitMask;
 
+  // mask to AND the PC address by
+  unsigned pcBitMask;
+
   // how many bits to use in each satCounter
-  unsigned satBits; // XXX - dont implement for now, just use 2 bits sat counters
+  // unsigned satBits; // XXX - dont implement for now, just use 2 bits sat counters
 
   // sat counters which is index by history xor pc
-  std::vector<SatCounter> satCounters;
+ std::vector<SatCounter> satCounters;
 
   // unsigned int to store state, is vector because need a separate state for each thread.
   std::vector<unsigned> globalHistory;

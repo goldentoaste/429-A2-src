@@ -72,7 +72,7 @@ class GShareBP(BranchPredictor):
     cxx_class = 'GShareBP'
     cxx_header = "cpu/pred/gshare.hh"
     #TODO
-    placeholder_param = Param.Unsigned(0,"Placeholder for future params")
+    historyBitCount = Param.Unsigned(13,"Number of bits for the history")
     #TODO
 
 class GlobalBP(BranchPredictor):
