@@ -524,6 +524,13 @@ class DefaultCommit
 
         /** Number of cycles where the commit bandwidth limit is reached. */
         Stats::Scalar commitEligibleSamples;
+
+        Stats::Scalar forwardCommited;
+        Stats::Scalar backwardCommited;
+        Stats::Scalar forwardTaken;
+        Stats::Scalar backwardTaken;
+
+
     } stats;
 };
 

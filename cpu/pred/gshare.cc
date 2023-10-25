@@ -8,7 +8,7 @@ GShareBP::GShareBP(const GShareBPParams *params)
     : BPredUnit(params),
       gshareBitCount(params->historyBitCount),
       hashOffset(0),
-      satCounters(1 << params->historyBitCount, SatCounter(2)),
+      satCounters(1 << params->historyBitCount, SatCounter(params.satBits)),
       globalHistory(params->numThreads, 0)
 {
     // compute bit bit mask to extract history
@@ -16,6 +16,8 @@ GShareBP::GShareBP(const GShareBPParams *params)
 
     // init pc bit mask, has gshareBitCount number of 1s, then shift by hashOffset
     pcBitMask = ((1 << gshareBitCount) - 1) << hashOffset;
+
+    threshold = (1ULL << (globalCtrBits - 1)) - 1;
 }
 
 inline void GShareBP::updateGlobalHistTaken(ThreadID tid)
@@ -40,7 +42,7 @@ bool GShareBP::lookup(ThreadID tid, Addr branch_addr, void *&bp_history)
 {
     // offsetted pc bits xor history bits
     unsigned satCounterIndex = ((branch_addr & pcBitMask) >> hashOffset) ^ globalHistory[tid];
-    bool taken = satCounters[satCounterIndex] > 1; // 00 = strong no take, 01 = weak no take, 10 - 2 or higher we take
+    bool taken = satCounters[satCounterIndex] > threshold; // 00 = strong no take, 01 = weak no take, 10 - 2 or higher we take
 
     GShareHistory *history = new GShareHistory;
     history->historyBackup = globalHistory[tid];

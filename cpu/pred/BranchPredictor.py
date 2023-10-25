@@ -73,6 +73,7 @@ class GShareBP(BranchPredictor):
     cxx_header = "cpu/pred/gshare.hh"
     #TODO
     historyBitCount = Param.Unsigned(13,"Number of bits for the history")
+    satBits = Param.Unsigned(2,"Number of bits for the sat counter")
     #TODO
 
 class GlobalBP(BranchPredictor):

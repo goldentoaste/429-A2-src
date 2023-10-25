@@ -69,8 +69,7 @@
 using namespace std;
 
 template <class Impl>
-void
-DefaultCommit<Impl>::processTrapEvent(ThreadID tid)
+void DefaultCommit<Impl>::processTrapEvent(ThreadID tid)
 {
     // This will get reset by commit if it was switched out at the
     // time of this event processing.
@@ -97,20 +96,23 @@ DefaultCommit<Impl>::DefaultCommit(O3CPU *_cpu, DerivO3CPUParams *params)
 {
     if (commitWidth > Impl::MaxWidth)
         fatal("commitWidth (%d) is larger than compiled limit (%d),\n"
-             "\tincrease MaxWidth in src/cpu/o3/impl.hh\n",
-             commitWidth, static_cast<int>(Impl::MaxWidth));
+              "\tincrease MaxWidth in src/cpu/o3/impl.hh\n",
+              commitWidth, static_cast<int>(Impl::MaxWidth));
 
     _status = Active;
     _nextStatus = Inactive;
 
-    if (commitPolicy == CommitPolicy::RoundRobin) {
-        //Set-Up Priority List
-        for (ThreadID tid = 0; tid < numThreads; tid++) {
+    if (commitPolicy == CommitPolicy::RoundRobin)
+    {
+        // Set-Up Priority List
+        for (ThreadID tid = 0; tid < numThreads; tid++)
+        {
             priority_list.push_back(tid);
         }
     }
 
-    for (ThreadID tid = 0; tid < Impl::MaxThreads; tid++) {
+    for (ThreadID tid = 0; tid < Impl::MaxThreads; tid++)
+    {
         commitStatus[tid] = Idle;
         changedROBNumEntries[tid] = false;
         trapSquash[tid] = false;
@@ -137,8 +139,7 @@ DefaultCommit<Impl>::name() const
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::regProbePoints()
+void DefaultCommit<Impl>::regProbePoints()
 {
     ppCommit = new ProbePointArg<DynInstPtr>(cpu->getProbeManager(), "Commit");
     ppCommitStall = new ProbePointArg<DynInstPtr>(cpu->getProbeManager(), "CommitStall");
@@ -150,11 +151,11 @@ DefaultCommit<Impl>::CommitStats::CommitStats(O3CPU *cpu,
                                               DefaultCommit *commit)
     : Stats::Group(cpu, "commit"),
       ADD_STAT(commitSquashedInsts, "The number of squashed insts skipped by"
-          " commit"),
+                                    " commit"),
       ADD_STAT(commitNonSpecStalls, "The number of times commit has been"
-          " forced to stall to communicate backwards"),
+                                    " forced to stall to communicate backwards"),
       ADD_STAT(branchMispredicts, "The number of times a branch was"
-          " mispredicted"),
+                                  " mispredicted"),
       ADD_STAT(numCommittedDist, "Number of insts commited each cycle"),
       ADD_STAT(instsCommitted, "Number of instructions committed"),
       ADD_STAT(opsCommitted, "Number of ops (including micro ops) committed"),
@@ -165,12 +166,16 @@ DefaultCommit<Impl>::CommitStats::CommitStats(O3CPU *cpu,
       ADD_STAT(branches, "Number of branches committed"),
       ADD_STAT(vector, "Number of committed Vector instructions."),
       ADD_STAT(floating, "Number of committed floating point"
-          " instructions."),
+                         " instructions."),
       ADD_STAT(integer, "Number of committed integer instructions."),
       ADD_STAT(functionCalls, "Number of function calls committed."),
       ADD_STAT(committedInstType, "Class of committed instruction"),
       ADD_STAT(commitEligibleSamples, "number cycles where commit BW limit"
-          " reached")
+                                      " reached"),
+      ADD_STAT(forwardCommited, "total forward branches."),
+      ADD_STAT(backwardCommited, "Total backward branches."),
+      ADD_STAT(forwardTaken, "Foward branches taken."),
+      ADD_STAT(backwardTaken, "Backward branches taken.")
 {
     using namespace Stats;
 
@@ -179,7 +184,7 @@ DefaultCommit<Impl>::CommitStats::CommitStats(O3CPU *cpu,
     branchMispredicts.prereq(branchMispredicts);
 
     numCommittedDist
-        .init(0,commit->commitWidth,1)
+        .init(0, commit->commitWidth, 1)
         .flags(Stats::pdf);
 
     instsCommitted
@@ -227,22 +232,25 @@ DefaultCommit<Impl>::CommitStats::CommitStats(O3CPU *cpu,
         .flags(total);
 
     committedInstType
-        .init(commit->numThreads,Enums::Num_OpClass)
+        .init(commit->numThreads, Enums::Num_OpClass)
         .flags(total | pdf | dist);
 
     committedInstType.ysubnames(Enums::OpClassStrings);
+
+    forwardCommited.flags(total);
+    backwardCommited.flags(total);
+    forwardTaken.flags(total);
+    backwardTaken.flags(total);
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::setThreads(std::vector<Thread *> &threads)
+void DefaultCommit<Impl>::setThreads(std::vector<Thread *> &threads)
 {
     thread = threads;
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::setTimeBuffer(TimeBuffer<TimeStruct> *tb_ptr)
+void DefaultCommit<Impl>::setTimeBuffer(TimeBuffer<TimeStruct> *tb_ptr)
 {
     timeBuffer = tb_ptr;
 
@@ -254,8 +262,7 @@ DefaultCommit<Impl>::setTimeBuffer(TimeBuffer<TimeStruct> *tb_ptr)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::setFetchQueue(TimeBuffer<FetchStruct> *fq_ptr)
+void DefaultCommit<Impl>::setFetchQueue(TimeBuffer<FetchStruct> *fq_ptr)
 {
     fetchQueue = fq_ptr;
 
@@ -264,8 +271,7 @@ DefaultCommit<Impl>::setFetchQueue(TimeBuffer<FetchStruct> *fq_ptr)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::setRenameQueue(TimeBuffer<RenameStruct> *rq_ptr)
+void DefaultCommit<Impl>::setRenameQueue(TimeBuffer<RenameStruct> *rq_ptr)
 {
     renameQueue = rq_ptr;
 
@@ -274,8 +280,7 @@ DefaultCommit<Impl>::setRenameQueue(TimeBuffer<RenameStruct> *rq_ptr)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::setIEWQueue(TimeBuffer<IEWStruct> *iq_ptr)
+void DefaultCommit<Impl>::setIEWQueue(TimeBuffer<IEWStruct> *iq_ptr)
 {
     iewQueue = iq_ptr;
 
@@ -284,43 +289,39 @@ DefaultCommit<Impl>::setIEWQueue(TimeBuffer<IEWStruct> *iq_ptr)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::setIEWStage(IEW *iew_stage)
+void DefaultCommit<Impl>::setIEWStage(IEW *iew_stage)
 {
     iewStage = iew_stage;
 }
 
-template<class Impl>
-void
-DefaultCommit<Impl>::setActiveThreads(list<ThreadID> *at_ptr)
+template <class Impl>
+void DefaultCommit<Impl>::setActiveThreads(list<ThreadID> *at_ptr)
 {
     activeThreads = at_ptr;
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::setRenameMap(RenameMap rm_ptr[])
+void DefaultCommit<Impl>::setRenameMap(RenameMap rm_ptr[])
 {
     for (ThreadID tid = 0; tid < numThreads; tid++)
         renameMap[tid] = &rm_ptr[tid];
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::setROB(ROB *rob_ptr)
+void DefaultCommit<Impl>::setROB(ROB *rob_ptr)
 {
     rob = rob_ptr;
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::startupStage()
+void DefaultCommit<Impl>::startupStage()
 {
     rob->setActiveThreads(activeThreads);
     rob->resetEntries();
 
     // Broadcast the number of free entries.
-    for (ThreadID tid = 0; tid < numThreads; tid++) {
+    for (ThreadID tid = 0; tid < numThreads; tid++)
+    {
         toIEW->commitInfo[tid].usedROB = true;
         toIEW->commitInfo[tid].freeROBEntries = rob->numFreeEntries(tid);
         toIEW->commitInfo[tid].emptyROB = true;
@@ -334,8 +335,7 @@ DefaultCommit<Impl>::startupStage()
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::clearStates(ThreadID tid)
+void DefaultCommit<Impl>::clearStates(ThreadID tid)
 {
     commitStatus[tid] = Idle;
     changedROBNumEntries[tid] = false;
@@ -350,39 +350,37 @@ DefaultCommit<Impl>::clearStates(ThreadID tid)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::drain()
+void DefaultCommit<Impl>::drain()
 {
     drainPending = true;
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::drainResume()
+void DefaultCommit<Impl>::drainResume()
 {
     drainPending = false;
     drainImminent = false;
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::drainSanityCheck() const
+void DefaultCommit<Impl>::drainSanityCheck() const
 {
     assert(isDrained());
     rob->drainSanityCheck();
 
     // hardware transactional memory
     // cannot drain partially through a transaction
-    for (ThreadID tid = 0; tid < numThreads; tid++) {
-        if (executingHtmTransaction(tid)) {
+    for (ThreadID tid = 0; tid < numThreads; tid++)
+    {
+        if (executingHtmTransaction(tid))
+        {
             panic("cannot drain partially through a HTM transaction");
         }
     }
 }
 
 template <class Impl>
-bool
-DefaultCommit<Impl>::isDrained() const
+bool DefaultCommit<Impl>::isDrained() const
 {
     /* Make sure no one is executing microcode. There are two reasons
      * for this:
@@ -393,7 +391,8 @@ DefaultCommit<Impl>::isDrained() const
      *   is executing in the middle of a ucode sequence that changes
      *   address mappings. This can happen on for example x86.
      */
-    for (ThreadID tid = 0; tid < numThreads; tid++) {
+    for (ThreadID tid = 0; tid < numThreads; tid++)
+    {
         if (pc[tid].microPC() != 0)
             return false;
     }
@@ -405,16 +404,16 @@ DefaultCommit<Impl>::isDrained() const
      * checkpoint with a different CPU should have the same timing.
      */
     return rob->isEmpty() &&
-        interrupt == NoFault;
+           interrupt == NoFault;
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::takeOverFrom()
+void DefaultCommit<Impl>::takeOverFrom()
 {
     _status = Active;
     _nextStatus = Inactive;
-    for (ThreadID tid = 0; tid < numThreads; tid++) {
+    for (ThreadID tid = 0; tid < numThreads; tid++)
+    {
         commitStatus[tid] = Idle;
         changedROBNumEntries[tid] = false;
         trapSquash[tid] = false;
@@ -425,20 +424,19 @@ DefaultCommit<Impl>::takeOverFrom()
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::deactivateThread(ThreadID tid)
+void DefaultCommit<Impl>::deactivateThread(ThreadID tid)
 {
     list<ThreadID>::iterator thread_it = std::find(priority_list.begin(),
-            priority_list.end(), tid);
+                                                   priority_list.end(), tid);
 
-    if (thread_it != priority_list.end()) {
+    if (thread_it != priority_list.end())
+    {
         priority_list.erase(thread_it);
     }
 }
 
 template <class Impl>
-bool
-DefaultCommit<Impl>::executingHtmTransaction(ThreadID tid) const
+bool DefaultCommit<Impl>::executingHtmTransaction(ThreadID tid) const
 {
     if (tid == InvalidThreadID)
         return false;
@@ -447,8 +445,7 @@ DefaultCommit<Impl>::executingHtmTransaction(ThreadID tid) const
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::resetHtmStartsStops(ThreadID tid)
+void DefaultCommit<Impl>::resetHtmStartsStops(ThreadID tid)
 {
     if (tid != InvalidThreadID)
     {
@@ -457,31 +454,34 @@ DefaultCommit<Impl>::resetHtmStartsStops(ThreadID tid)
     }
 }
 
-
 template <class Impl>
-void
-DefaultCommit<Impl>::updateStatus()
+void DefaultCommit<Impl>::updateStatus()
 {
     // reset ROB changed variable
     list<ThreadID>::iterator threads = activeThreads->begin();
     list<ThreadID>::iterator end = activeThreads->end();
 
-    while (threads != end) {
+    while (threads != end)
+    {
         ThreadID tid = *threads++;
 
         changedROBNumEntries[tid] = false;
 
         // Also check if any of the threads has a trap pending
         if (commitStatus[tid] == TrapPending ||
-            commitStatus[tid] == FetchTrapPending) {
+            commitStatus[tid] == FetchTrapPending)
+        {
             _nextStatus = Active;
         }
     }
 
-    if (_nextStatus == Inactive && _status == Active) {
+    if (_nextStatus == Inactive && _status == Active)
+    {
         DPRINTF(Activity, "Deactivating stage.\n");
         cpu->deactivateStage(O3CPU::CommitIdx);
-    } else if (_nextStatus == Active && _status == Inactive) {
+    }
+    else if (_nextStatus == Active && _status == Inactive)
+    {
         DPRINTF(Activity, "Activating stage.\n");
         cpu->activateStage(O3CPU::CommitIdx);
     }
@@ -490,16 +490,17 @@ DefaultCommit<Impl>::updateStatus()
 }
 
 template <class Impl>
-bool
-DefaultCommit<Impl>::changedROBEntries()
+bool DefaultCommit<Impl>::changedROBEntries()
 {
     list<ThreadID>::iterator threads = activeThreads->begin();
     list<ThreadID>::iterator end = activeThreads->end();
 
-    while (threads != end) {
+    while (threads != end)
+    {
         ThreadID tid = *threads++;
 
-        if (changedROBNumEntries[tid]) {
+        if (changedROBNumEntries[tid])
+        {
             return true;
         }
     }
@@ -515,21 +516,21 @@ DefaultCommit<Impl>::numROBFreeEntries(ThreadID tid)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::generateTrapEvent(ThreadID tid, Fault inst_fault)
+void DefaultCommit<Impl>::generateTrapEvent(ThreadID tid, Fault inst_fault)
 {
     DPRINTF(Commit, "Generating trap event for [tid:%i]\n", tid);
 
     EventFunctionWrapper *trap = new EventFunctionWrapper(
-        [this, tid]{ processTrapEvent(tid); },
+        [this, tid]
+        { processTrapEvent(tid); },
         "Trap", true, Event::CPU_Tick_Pri);
 
-    Cycles latency = dynamic_pointer_cast<SyscallRetryFault>(inst_fault) ?
-                     cpu->syscallRetryLatency : trapLatency;
+    Cycles latency = dynamic_pointer_cast<SyscallRetryFault>(inst_fault) ? cpu->syscallRetryLatency : trapLatency;
 
     // hardware transactional memory
     if (inst_fault != nullptr &&
-        std::dynamic_pointer_cast<GenericHtmFailureFault>(inst_fault)) {
+        std::dynamic_pointer_cast<GenericHtmFailureFault>(inst_fault))
+    {
         // TODO
         // latency = default abort/restore latency
         // could also do some kind of exponential back off if desired
@@ -541,8 +542,7 @@ DefaultCommit<Impl>::generateTrapEvent(ThreadID tid, Fault inst_fault)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::generateTCEvent(ThreadID tid)
+void DefaultCommit<Impl>::generateTCEvent(ThreadID tid)
 {
     assert(!trapInFlight[tid]);
     DPRINTF(Commit, "Generating TC squash event for [tid:%i]\n", tid);
@@ -551,15 +551,13 @@ DefaultCommit<Impl>::generateTCEvent(ThreadID tid)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::squashAll(ThreadID tid)
+void DefaultCommit<Impl>::squashAll(ThreadID tid)
 {
     // If we want to include the squashing instruction in the squash,
     // then use one older sequence number.
     // Hopefully this doesn't mess things up.  Basically I want to squash
     // all instructions of this thread.
-    InstSeqNum squashed_inst = rob->isEmpty(tid) ?
-        lastCommitedSeqNum[tid] : rob->readHeadInst(tid)->seqNum - 1;
+    InstSeqNum squashed_inst = rob->isEmpty(tid) ? lastCommitedSeqNum[tid] : rob->readHeadInst(tid)->seqNum - 1;
 
     // All younger instructions will be squashed. Set the sequence
     // number as the youngest instruction in the ROB (0 in this case.
@@ -587,8 +585,7 @@ DefaultCommit<Impl>::squashAll(ThreadID tid)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::squashFromTrap(ThreadID tid)
+void DefaultCommit<Impl>::squashFromTrap(ThreadID tid)
 {
     squashAll(tid);
 
@@ -605,8 +602,7 @@ DefaultCommit<Impl>::squashFromTrap(ThreadID tid)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::squashFromTC(ThreadID tid)
+void DefaultCommit<Impl>::squashFromTC(ThreadID tid)
 {
     squashAll(tid);
 
@@ -622,11 +618,11 @@ DefaultCommit<Impl>::squashFromTC(ThreadID tid)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::squashFromSquashAfter(ThreadID tid)
+void DefaultCommit<Impl>::squashFromSquashAfter(ThreadID tid)
 {
     DPRINTF(Commit, "Squashing after squash after request, "
-            "restarting at PC %s\n", pc[tid]);
+                    "restarting at PC %s\n",
+            pc[tid]);
 
     squashAll(tid);
     // Make sure to inform the fetch stage of which instruction caused
@@ -640,8 +636,7 @@ DefaultCommit<Impl>::squashFromSquashAfter(ThreadID tid)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::squashAfter(ThreadID tid, const DynInstPtr &head_inst)
+void DefaultCommit<Impl>::squashAfter(ThreadID tid, const DynInstPtr &head_inst)
 {
     DPRINTF(Commit, "Executing squash after for [tid:%i] inst [sn:%llu]\n",
             tid, head_inst->seqNum);
@@ -652,8 +647,7 @@ DefaultCommit<Impl>::squashAfter(ThreadID tid, const DynInstPtr &head_inst)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::tick()
+void DefaultCommit<Impl>::tick()
 {
     wroteToTimeBuffer = false;
     _nextStatus = Inactive;
@@ -666,20 +660,26 @@ DefaultCommit<Impl>::tick()
 
     // Check if any of the threads are done squashing.  Change the
     // status if they are done.
-    while (threads != end) {
+    while (threads != end)
+    {
         ThreadID tid = *threads++;
 
         // Clear the bit saying if the thread has committed stores
         // this cycle.
         committedStores[tid] = false;
 
-        if (commitStatus[tid] == ROBSquashing) {
+        if (commitStatus[tid] == ROBSquashing)
+        {
 
-            if (rob->isDoneSquashing(tid)) {
+            if (rob->isDoneSquashing(tid))
+            {
                 commitStatus[tid] = Running;
-            } else {
-                DPRINTF(Commit,"[tid:%i] Still Squashing, cannot commit any"
-                        " insts this cycle.\n", tid);
+            }
+            else
+            {
+                DPRINTF(Commit, "[tid:%i] Still Squashing, cannot commit any"
+                                " insts this cycle.\n",
+                        tid);
                 rob->doSquash(tid);
                 toIEW->commitInfo[tid].robSquashing = true;
                 wroteToTimeBuffer = true;
@@ -693,27 +693,30 @@ DefaultCommit<Impl>::tick()
 
     threads = activeThreads->begin();
 
-    while (threads != end) {
+    while (threads != end)
+    {
         ThreadID tid = *threads++;
 
-        if (!rob->isEmpty(tid) && rob->readHeadInst(tid)->readyToCommit()) {
+        if (!rob->isEmpty(tid) && rob->readHeadInst(tid)->readyToCommit())
+        {
             // The ROB has more instructions it can commit. Its next status
             // will be active.
             _nextStatus = Active;
 
             const DynInstPtr &inst M5_VAR_USED = rob->readHeadInst(tid);
 
-            DPRINTF(Commit,"[tid:%i] Instruction [sn:%llu] PC %s is head of"
-                    " ROB and ready to commit\n",
+            DPRINTF(Commit, "[tid:%i] Instruction [sn:%llu] PC %s is head of"
+                            " ROB and ready to commit\n",
                     tid, inst->seqNum, inst->pcState());
-
-        } else if (!rob->isEmpty(tid)) {
+        }
+        else if (!rob->isEmpty(tid))
+        {
             const DynInstPtr &inst = rob->readHeadInst(tid);
 
             ppCommitStall->notify(inst);
 
-            DPRINTF(Commit,"[tid:%i] Can't commit, Instruction [sn:%llu] PC "
-                    "%s is head of ROB and not ready\n",
+            DPRINTF(Commit, "[tid:%i] Can't commit, Instruction [sn:%llu] PC "
+                            "%s is head of ROB and not ready\n",
                     tid, inst->seqNum, inst->pcState());
         }
 
@@ -721,8 +724,8 @@ DefaultCommit<Impl>::tick()
                 tid, rob->countInsts(tid), rob->numFreeEntries(tid));
     }
 
-
-    if (wroteToTimeBuffer) {
+    if (wroteToTimeBuffer)
+    {
         DPRINTF(Activity, "Activity This Cycle.\n");
         cpu->activityThisCycle();
     }
@@ -731,13 +734,13 @@ DefaultCommit<Impl>::tick()
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::handleInterrupt()
+void DefaultCommit<Impl>::handleInterrupt()
 {
     // Verify that we still have an interrupt to handle
-    if (!cpu->checkInterrupts(0)) {
+    if (!cpu->checkInterrupts(0))
+    {
         DPRINTF(Commit, "Pending interrupt is cleared by requestor before "
-                "it got handled. Restart fetching from the orig path.\n");
+                        "it got handled. Restart fetching from the orig path.\n");
         toIEW->commitInfo[0].clearInterrupt = true;
         interrupt = NoFault;
         avoidQuiesceLiveLock = true;
@@ -746,7 +749,8 @@ DefaultCommit<Impl>::handleInterrupt()
 
     // Wait until all in flight instructions are finished before enterring
     // the interrupt.
-    if (canHandleInterrupts && cpu->instList.empty()) {
+    if (canHandleInterrupts && cpu->instList.empty())
+    {
         // Squash or record that I need to squash this cycle if
         // an interrupt needed to be handled.
         DPRINTF(Commit, "Interrupt detected.\n");
@@ -757,7 +761,8 @@ DefaultCommit<Impl>::handleInterrupt()
         assert(!thread[0]->noSquashFromTC);
         thread[0]->noSquashFromTC = true;
 
-        if (cpu->checker) {
+        if (cpu->checker)
+        {
             cpu->checker->handlePendingInt();
         }
 
@@ -776,22 +781,23 @@ DefaultCommit<Impl>::handleInterrupt()
         generateTrapEvent(0, interrupt);
 
         avoidQuiesceLiveLock = false;
-    } else {
+    }
+    else
+    {
         DPRINTF(Commit, "Interrupt pending: instruction is %sin "
-                "flight, ROB is %sempty\n",
+                        "flight, ROB is %sempty\n",
                 canHandleInterrupts ? "not " : "",
-                cpu->instList.empty() ? "" : "not " );
+                cpu->instList.empty() ? "" : "not ");
     }
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::propagateInterrupt()
+void DefaultCommit<Impl>::propagateInterrupt()
 {
     // Don't propagate intterupts if we are currently handling a trap or
     // in draining and the last observable instruction has been committed.
     if (commitStatus[0] == TrapPending || interrupt || trapSquash[0] ||
-            tcSquash[0] || drainImminent)
+        tcSquash[0] || drainImminent)
         return;
 
     // Process interrupts if interrupts are enabled, not in PAL
@@ -810,10 +816,10 @@ DefaultCommit<Impl>::propagateInterrupt()
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::commit()
+void DefaultCommit<Impl>::commit()
 {
-    if (FullSystem) {
+    if (FullSystem)
+    {
         // Check if we have a interrupt and get read to handle it
         if (cpu->checkInterrupts(0))
             propagateInterrupt();
@@ -827,12 +833,14 @@ DefaultCommit<Impl>::commit()
 
     int num_squashing_threads = 0;
 
-    while (threads != end) {
+    while (threads != end)
+    {
         ThreadID tid = *threads++;
 
         // Not sure which one takes priority.  I think if we have
         // both, that's a bad sign.
-        if (trapSquash[tid]) {
+        if (trapSquash[tid])
+        {
             assert(!tcSquash[tid]);
             squashFromTrap(tid);
 
@@ -842,10 +850,14 @@ DefaultCommit<Impl>::commit()
             // the next cycle to fully terminate this thread
             if (cpu->isThreadExiting(tid))
                 cpu->scheduleThreadExitEvent(tid);
-        } else if (tcSquash[tid]) {
+        }
+        else if (tcSquash[tid])
+        {
             assert(commitStatus[tid] != TrapPending);
             squashFromTC(tid);
-        } else if (commitStatus[tid] == SquashAfterPending) {
+        }
+        else if (commitStatus[tid] == SquashAfterPending)
+        {
             // A squash from the previous cycle of the commit stage (i.e.,
             // commitInsts() called squashAfter) is pending. Squash the
             // thread now.
@@ -857,19 +869,23 @@ DefaultCommit<Impl>::commit()
         // instructions overriding squashes from older instructions.
         if (fromIEW->squash[tid] &&
             commitStatus[tid] != TrapPending &&
-            fromIEW->squashedSeqNum[tid] <= youngestSeqNum[tid]) {
+            fromIEW->squashedSeqNum[tid] <= youngestSeqNum[tid])
+        {
 
-            if (fromIEW->mispredictInst[tid]) {
+            if (fromIEW->mispredictInst[tid])
+            {
                 DPRINTF(Commit,
-                    "[tid:%i] Squashing due to branch mispred "
-                    "PC:%#x [sn:%llu]\n",
-                    tid,
-                    fromIEW->mispredictInst[tid]->instAddr(),
-                    fromIEW->squashedSeqNum[tid]);
-            } else {
+                        "[tid:%i] Squashing due to branch mispred "
+                        "PC:%#x [sn:%llu]\n",
+                        tid,
+                        fromIEW->mispredictInst[tid]->instAddr(),
+                        fromIEW->squashedSeqNum[tid]);
+            }
+            else
+            {
                 DPRINTF(Commit,
-                    "[tid:%i] Squashing due to order violation [sn:%llu]\n",
-                    tid, fromIEW->squashedSeqNum[tid]);
+                        "[tid:%i] Squashing due to order violation [sn:%llu]\n",
+                        tid, fromIEW->squashedSeqNum[tid]);
             }
 
             DPRINTF(Commit, "[tid:%i] Redirecting to PC %#x\n",
@@ -882,7 +898,8 @@ DefaultCommit<Impl>::commit()
             // then use one older sequence number.
             InstSeqNum squashed_inst = fromIEW->squashedSeqNum[tid];
 
-            if (fromIEW->includeSquashInst[tid]) {
+            if (fromIEW->includeSquashInst[tid])
+            {
                 squashed_inst--;
             }
 
@@ -906,10 +923,12 @@ DefaultCommit<Impl>::commit()
             toIEW->commitInfo[tid].branchTaken =
                 fromIEW->branchTaken[tid];
             toIEW->commitInfo[tid].squashInst =
-                                    rob->findInst(tid, squashed_inst);
-            if (toIEW->commitInfo[tid].mispredictInst) {
-                if (toIEW->commitInfo[tid].mispredictInst->isUncondCtrl()) {
-                     toIEW->commitInfo[tid].branchTaken = true;
+                rob->findInst(tid, squashed_inst);
+            if (toIEW->commitInfo[tid].mispredictInst)
+            {
+                if (toIEW->commitInfo[tid].mispredictInst->isUncondCtrl())
+                {
+                    toIEW->commitInfo[tid].branchTaken = true;
                 }
                 ++stats.branchMispredicts;
             }
@@ -917,18 +936,21 @@ DefaultCommit<Impl>::commit()
             toIEW->commitInfo[tid].pc = fromIEW->pc[tid];
         }
 
-        if (commitStatus[tid] == ROBSquashing) {
+        if (commitStatus[tid] == ROBSquashing)
+        {
             num_squashing_threads++;
         }
     }
 
     // If commit is currently squashing, then it will have activity for the
     // next cycle. Set its next status as active.
-    if (num_squashing_threads) {
+    if (num_squashing_threads)
+    {
         _nextStatus = Active;
     }
 
-    if (num_squashing_threads != numThreads) {
+    if (num_squashing_threads != numThreads)
+    {
         // If we're not currently squashing, then get instructions.
         getInsts();
 
@@ -936,13 +958,15 @@ DefaultCommit<Impl>::commit()
         commitInsts();
     }
 
-    //Check for any activity
+    // Check for any activity
     threads = activeThreads->begin();
 
-    while (threads != end) {
+    while (threads != end)
+    {
         ThreadID tid = *threads++;
 
-        if (changedROBNumEntries[tid]) {
+        if (changedROBNumEntries[tid])
+        {
             toIEW->commitInfo[tid].usedROB = true;
             toIEW->commitInfo[tid].freeROBEntries = rob->numFreeEntries(tid);
 
@@ -961,20 +985,19 @@ DefaultCommit<Impl>::commit()
         // @todo: Make this handle multi-cycle communication between
         // commit and IEW.
         if (checkEmptyROB[tid] && rob->isEmpty(tid) &&
-            !iewStage->hasStoresToWB(tid) && !committedStores[tid]) {
+            !iewStage->hasStoresToWB(tid) && !committedStores[tid])
+        {
             checkEmptyROB[tid] = false;
             toIEW->commitInfo[tid].usedROB = true;
             toIEW->commitInfo[tid].emptyROB = true;
             toIEW->commitInfo[tid].freeROBEntries = rob->numFreeEntries(tid);
             wroteToTimeBuffer = true;
         }
-
     }
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::commitInsts()
+void DefaultCommit<Impl>::commitInsts()
 {
     ////////////////////////////////////
     // Handle commit
@@ -993,7 +1016,8 @@ DefaultCommit<Impl>::commitInsts()
 
     // Commit as many instructions as possible until the commit bandwidth
     // limit is reached, or it becomes impossible to commit any more.
-    while (num_committed < commitWidth) {
+    while (num_committed < commitWidth)
+    {
         // hardware transactionally memory
         // If executing within a transaction,
         // need to handle interrupts specially
@@ -1002,14 +1026,18 @@ DefaultCommit<Impl>::commitInsts()
 
         // Check for any interrupt that we've already squashed for
         // and start processing it.
-        if (interrupt != NoFault) {
+        if (interrupt != NoFault)
+        {
             // If inside a transaction, postpone interrupts
-            if (executingHtmTransaction(commit_thread)) {
+            if (executingHtmTransaction(commit_thread))
+            {
                 cpu->clearInterrupts(0);
                 toIEW->commitInfo[0].clearInterrupt = true;
                 interrupt = NoFault;
                 avoidQuiesceLiveLock = true;
-            } else {
+            }
+            else
+            {
                 handleInterrupt();
             }
         }
@@ -1031,10 +1059,11 @@ DefaultCommit<Impl>::commitInsts()
 
         // If the head instruction is squashed, it is ready to retire
         // (be removed from the ROB) at any time.
-        if (head_inst->isSquashed()) {
+        if (head_inst->isSquashed())
+        {
 
             DPRINTF(Commit, "Retiring squashed instruction from "
-                    "ROB.\n");
+                            "ROB.\n");
 
             rob->retireHead(commit_thread);
 
@@ -1044,7 +1073,9 @@ DefaultCommit<Impl>::commitInsts()
 
             // Record that the number of ROB entries has changed.
             changedROBNumEntries[tid] = true;
-        } else {
+        }
+        else
+        {
             pc[tid] = head_inst->pcState();
 
             // Increment the total number of non-speculative instructions
@@ -1057,7 +1088,8 @@ DefaultCommit<Impl>::commitInsts()
             // Try to commit the head instruction.
             bool commit_success = commitHead(head_inst, num_committed);
 
-            if (commit_success) {
+            if (commit_success)
+            {
                 ++num_committed;
                 stats.committedInstType[tid][head_inst->opClass()]++;
                 ppCommit->notify(head_inst);
@@ -1069,9 +1101,12 @@ DefaultCommit<Impl>::commitInsts()
                     htmStarts[tid]++;
 
                 // sanity check
-                if (head_inst->inHtmTransactionalState()) {
+                if (head_inst->inHtmTransactionalState())
+                {
                     assert(executingHtmTransaction(tid));
-                } else {
+                }
+                else
+                {
                     assert(!executingHtmTransaction(tid));
                 }
 
@@ -1098,7 +1133,8 @@ DefaultCommit<Impl>::commitInsts()
 
                 // Check instruction execution if it successfully commits and
                 // is not carrying a fault.
-                if (cpu->checker) {
+                if (cpu->checker)
+                {
                     cpu->checker->verify(head_inst);
                 }
 
@@ -1114,9 +1150,11 @@ DefaultCommit<Impl>::commitInsts()
                 if (head_inst->isSquashAfter())
                     squashAfter(tid, head_inst);
 
-                if (drainPending) {
+                if (drainPending)
+                {
                     if (pc[tid].microPC() == 0 && interrupt == NoFault &&
-                        !thread[tid]->trapPending) {
+                        !thread[tid]->trapPending)
+                    {
                         // Last architectually committed instruction.
                         // Squash the pipeline, stall fetch, and use
                         // drainImminent to disable interrupts
@@ -1131,20 +1169,23 @@ DefaultCommit<Impl>::commitInsts()
                                       head_inst->isLastMicroop() ||
                                       !head_inst->isDelayedCommit();
 
-                if (onInstBoundary) {
+                if (onInstBoundary)
+                {
                     int count = 0;
                     Addr oldpc;
                     // Make sure we're not currently updating state while
                     // handling PC events.
                     assert(!thread[tid]->noSquashFromTC &&
                            !thread[tid]->trapPending);
-                    do {
+                    do
+                    {
                         oldpc = pc[tid].instAddr();
                         thread[tid]->pcEventQueue.service(
-                                oldpc, thread[tid]->getTC());
+                            oldpc, thread[tid]->getTC());
                         count++;
                     } while (oldpc != pc[tid].instAddr());
-                    if (count > 1) {
+                    if (count > 1)
+                    {
                         DPRINTF(Commit,
                                 "PC skip function event, stopping commit\n");
                         break;
@@ -1161,10 +1202,12 @@ DefaultCommit<Impl>::commitInsts()
                 if (!interrupt && avoidQuiesceLiveLock &&
                     onInstBoundary && cpu->checkInterrupts(0))
                     squashAfter(tid, head_inst);
-            } else {
+            }
+            else
+            {
                 DPRINTF(Commit, "Unable to commit head instruction PC:%s "
-                        "[tid:%i] [sn:%llu].\n",
-                        head_inst->pcState(), tid ,head_inst->seqNum);
+                                "[tid:%i] [sn:%llu].\n",
+                        head_inst->pcState(), tid, head_inst->seqNum);
                 break;
             }
         }
@@ -1173,14 +1216,14 @@ DefaultCommit<Impl>::commitInsts()
     DPRINTF(CommitRate, "%i\n", num_committed);
     stats.numCommittedDist.sample(num_committed);
 
-    if (num_committed == commitWidth) {
+    if (num_committed == commitWidth)
+    {
         stats.commitEligibleSamples++;
     }
 }
 
 template <class Impl>
-bool
-DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
+bool DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
 {
     assert(head_inst);
 
@@ -1188,17 +1231,15 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
 
     // If the instruction is not executed yet, then it will need extra
     // handling.  Signal backwards that it should be executed.
-    if (!head_inst->isExecuted()) {
+    if (!head_inst->isExecuted())
+    {
         // Keep this number correct.  We have not yet actually executed
         // and committed this instruction.
         thread[tid]->funcExeInst--;
 
         // Make sure we are only trying to commit un-executed instructions we
         // think are possible.
-        assert(head_inst->isNonSpeculative() || head_inst->isStoreConditional()
-               || head_inst->isMemBarrier() || head_inst->isWriteBarrier()
-               || head_inst->isAtomic()
-               || (head_inst->isLoad() && head_inst->strictlyOrdered()));
+        assert(head_inst->isNonSpeculative() || head_inst->isStoreConditional() || head_inst->isMemBarrier() || head_inst->isWriteBarrier() || head_inst->isAtomic() || (head_inst->isLoad() && head_inst->strictlyOrdered()));
 
         DPRINTF(Commit,
                 "Encountered a barrier or non-speculative "
@@ -1206,7 +1247,8 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
                 "at the head of the ROB, PC %s.\n",
                 tid, head_inst->seqNum, head_inst->pcState());
 
-        if (inst_num > 0 || iewStage->hasStoresToWB(tid)) {
+        if (inst_num > 0 || iewStage->hasStoresToWB(tid))
+        {
             DPRINTF(Commit,
                     "[tid:%i] [sn:%llu] "
                     "Waiting for all stores to writeback.\n",
@@ -1220,20 +1262,24 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
         // it is executed.
         head_inst->clearCanCommit();
 
-        if (head_inst->isLoad() && head_inst->strictlyOrdered()) {
+        if (head_inst->isLoad() && head_inst->strictlyOrdered())
+        {
             DPRINTF(Commit, "[tid:%i] [sn:%llu] "
-                    "Strictly ordered load, PC %s.\n",
+                            "Strictly ordered load, PC %s.\n",
                     tid, head_inst->seqNum, head_inst->pcState());
             toIEW->commitInfo[tid].strictlyOrdered = true;
             toIEW->commitInfo[tid].strictlyOrderedLoad = head_inst;
-        } else {
+        }
+        else
+        {
             ++stats.commitNonSpecStalls;
         }
 
         return false;
     }
 
-    if (head_inst->isThreadSync()) {
+    if (head_inst->isThreadSync())
+    {
         // Not handled for now.
         panic("Thread sync instructions are not handled yet.\n");
     }
@@ -1244,12 +1290,14 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
     // hardware transactional memory
     // if a fault occurred within a HTM transaction
     // ensure that the transaction aborts
-    if (inst_fault != NoFault && head_inst->inHtmTransactionalState()) {
+    if (inst_fault != NoFault && head_inst->inHtmTransactionalState())
+    {
         // There exists a generic HTM fault common to all ISAs
-        if (!std::dynamic_pointer_cast<GenericHtmFailureFault>(inst_fault)) {
+        if (!std::dynamic_pointer_cast<GenericHtmFailureFault>(inst_fault))
+        {
             DPRINTF(HtmCpu, "%s - fault (%s) encountered within transaction"
                             " - converting to GenericHtmFailureFault\n",
-            head_inst->staticInst->getName(), inst_fault->name());
+                    head_inst->staticInst->getName(), inst_fault->name());
             inst_fault = std::make_shared<GenericHtmFailureFault>(
                 head_inst->getHtmTransactionUid(),
                 HtmFailureFaultCause::EXCEPTION);
@@ -1259,15 +1307,18 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
     }
 
     // Stores mark themselves as completed.
-    if (!head_inst->isStore() && inst_fault == NoFault) {
+    if (!head_inst->isStore() && inst_fault == NoFault)
+    {
         head_inst->setCompleted();
     }
 
-    if (inst_fault != NoFault) {
+    if (inst_fault != NoFault)
+    {
         DPRINTF(Commit, "Inst [tid:%i] [sn:%llu] PC %s has a fault\n",
                 tid, head_inst->seqNum, head_inst->pcState());
 
-        if (iewStage->hasStoresToWB(tid) || inst_num > 0) {
+        if (iewStage->hasStoresToWB(tid) || inst_num > 0)
+        {
             DPRINTF(Commit,
                     "[tid:%i] [sn:%llu] "
                     "Stores outstanding, fault must wait.\n",
@@ -1279,7 +1330,8 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
 
         // If instruction has faulted, let the checker execute it and
         // check if it sees the same fault and control flow.
-        if (cpu->checker) {
+        if (cpu->checker)
+        {
             // Need to check the instruction before its fault is processed
             cpu->checker->verify(head_inst);
         }
@@ -1297,9 +1349,7 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
         // prevents external agents from changing any specific state
         // that the trap need.
         cpu->trap(inst_fault, tid,
-                  head_inst->notAnInst() ?
-                      StaticInst::nullStaticInstPtr :
-                      head_inst->staticInst);
+                  head_inst->notAnInst() ? StaticInst::nullStaticInstPtr : head_inst->staticInst);
 
         // Exit state update mode to avoid accidental updating.
         thread[tid]->noSquashFromTC = false;
@@ -1307,13 +1357,14 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
         commitStatus[tid] = TrapPending;
 
         DPRINTF(Commit,
-            "[tid:%i] [sn:%llu] Committing instruction with fault\n",
-            tid, head_inst->seqNum);
-        if (head_inst->traceData) {
+                "[tid:%i] [sn:%llu] Committing instruction with fault\n",
+                tid, head_inst->seqNum);
+        if (head_inst->traceData)
+        {
             // We ignore ReExecution "faults" here as they are not real
             // (architectural) faults but signal flush/replays.
-            if (DTRACE(ExecFaulting)
-                && dynamic_cast<ReExec*>(inst_fault.get()) == nullptr) {
+            if (DTRACE(ExecFaulting) && dynamic_cast<ReExec *>(inst_fault.get()) == nullptr)
+            {
 
                 head_inst->traceData->setFaulting(true);
                 head_inst->traceData->setFetchSeq(head_inst->seqNum);
@@ -1334,21 +1385,24 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
     DPRINTF(Commit,
             "[tid:%i] [sn:%llu] Committing instruction with PC %s\n",
             tid, head_inst->seqNum, head_inst->pcState());
-    if (head_inst->traceData) {
+    if (head_inst->traceData)
+    {
         head_inst->traceData->setFetchSeq(head_inst->seqNum);
         head_inst->traceData->setCPSeq(thread[tid]->numOp);
         head_inst->traceData->dump();
         delete head_inst->traceData;
         head_inst->traceData = NULL;
     }
-    if (head_inst->isReturn()) {
+    if (head_inst->isReturn())
+    {
         DPRINTF(Commit,
                 "[tid:%i] [sn:%llu] Return Instruction Committed PC %s \n",
                 tid, head_inst->seqNum, head_inst->pcState());
     }
 
     // Update the commit rename map
-    for (int i = 0; i < head_inst->numDestRegs(); i++) {
+    for (int i = 0; i < head_inst->numDestRegs(); i++)
+    {
         renameMap[tid]->setEntry(head_inst->flattenedDestRegIdx(i),
                                  head_inst->renamedDestRegIdx(i));
     }
@@ -1362,7 +1416,8 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
     rob->retireHead(tid);
 
 #if TRACING_ON
-    if (DTRACE(O3PipeView)) {
+    if (DTRACE(O3PipeView))
+    {
         head_inst->commitTick = curTick() - head_inst->fetchTick;
     }
 #endif
@@ -1376,21 +1431,22 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::getInsts()
+void DefaultCommit<Impl>::getInsts()
 {
     DPRINTF(Commit, "Getting instructions from Rename stage.\n");
 
     // Read any renamed instructions and place them into the ROB.
     int insts_to_process = std::min((int)renameWidth, fromRename->size);
 
-    for (int inst_num = 0; inst_num < insts_to_process; ++inst_num) {
+    for (int inst_num = 0; inst_num < insts_to_process; ++inst_num)
+    {
         const DynInstPtr &inst = fromRename->insts[inst_num];
         ThreadID tid = inst->threadNumber;
 
         if (!inst->isSquashed() &&
             commitStatus[tid] != ROBSquashing &&
-            commitStatus[tid] != TrapPending) {
+            commitStatus[tid] != TrapPending)
+        {
             changedROBNumEntries[tid] = true;
 
             DPRINTF(Commit, "[tid:%i] [sn:%llu] Inserting PC %s into ROB.\n",
@@ -1401,25 +1457,28 @@ DefaultCommit<Impl>::getInsts()
             assert(rob->getThreadEntries(tid) <= rob->getMaxEntries(tid));
 
             youngestSeqNum[tid] = inst->seqNum;
-        } else {
+        }
+        else
+        {
             DPRINTF(Commit, "[tid:%i] [sn:%llu] "
-                    "Instruction PC %s was squashed, skipping.\n",
+                            "Instruction PC %s was squashed, skipping.\n",
                     inst->seqNum, tid, inst->pcState());
         }
     }
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::markCompletedInsts()
+void DefaultCommit<Impl>::markCompletedInsts()
 {
     // Grab completed insts out of the IEW instruction queue, and mark
     // instructions completed within the ROB.
-    for (int inst_num = 0; inst_num < fromIEW->size; ++inst_num) {
+    for (int inst_num = 0; inst_num < fromIEW->size; ++inst_num)
+    {
         assert(fromIEW->insts[inst_num]);
-        if (!fromIEW->insts[inst_num]->isSquashed()) {
+        if (!fromIEW->insts[inst_num]->isSquashed())
+        {
             DPRINTF(Commit, "[tid:%i] Marking PC %s, [sn:%llu] ready "
-                    "within ROB.\n",
+                            "within ROB.\n",
                     fromIEW->insts[inst_num]->threadNumber,
                     fromIEW->insts[inst_num]->pcState(),
                     fromIEW->insts[inst_num]->seqNum);
@@ -1431,8 +1490,7 @@ DefaultCommit<Impl>::markCompletedInsts()
 }
 
 template <class Impl>
-void
-DefaultCommit<Impl>::updateComInstStats(const DynInstPtr &inst)
+void DefaultCommit<Impl>::updateComInstStats(const DynInstPtr &inst)
 {
     ThreadID tid = inst->threadNumber;
 
@@ -1442,7 +1500,8 @@ DefaultCommit<Impl>::updateComInstStats(const DynInstPtr &inst)
 
     // To match the old model, don't count nops and instruction
     // prefetches towards the total commit count.
-    if (!inst->isNop() && !inst->isInstPrefetch()) {
+    if (!inst->isNop() && !inst->isInstPrefetch())
+    {
         cpu->instDone(tid, inst);
     }
 
@@ -1450,24 +1509,63 @@ DefaultCommit<Impl>::updateComInstStats(const DynInstPtr &inst)
     //  Control Instructions
     //
     if (inst->isControl())
+    {
+
         stats.branches[tid]++;
+
+        // Only consider direct control instructions for branch statistics. branchTarget() does not support indirect branches.
+        if (inst->isDirectCtrl())
+        {
+            // check if the branch is indeed taken or not
+            bool mispredicted = inst->mispredicted();
+            bool taken = inst->readPredTaken();
+
+            // if the prediction is wrong, then pred taken -> not actually taken and vice versa
+            // there isn't a direct way to see if its taken or not?
+            if (mispredicted)
+            {
+                taken = !taken;
+            }
+
+            if (inst->branchTarget().instPC() > inst->instAddr())
+            {
+                stats.forwardCommited++;
+                if (taken)
+                {
+                    stats.forwardTaken++;
+                }
+            }
+            else
+            {
+                stats.backwardCommited++;
+                if (taken)
+                {
+                    stats.backwardTaken++;
+                }
+            }
+        }
+    }
 
     //
     //  Memory references
     //
-    if (inst->isMemRef()) {
+    if (inst->isMemRef())
+    {
         stats.memRefs[tid]++;
 
-        if (inst->isLoad()) {
+        if (inst->isLoad())
+        {
             stats.loads[tid]++;
         }
 
-        if (inst->isAtomic()) {
+        if (inst->isAtomic())
+        {
             stats.amos[tid]++;
         }
     }
 
-    if (inst->isMemBarrier()) {
+    if (inst->isMemBarrier())
+    {
         stats.membars[tid]++;
     }
 
@@ -1485,7 +1583,6 @@ DefaultCommit<Impl>::updateComInstStats(const DynInstPtr &inst)
     // Function Calls
     if (inst->isCall())
         stats.functionCalls[tid]++;
-
 }
 
 ////////////////////////////////////////
@@ -1497,53 +1594,63 @@ template <class Impl>
 ThreadID
 DefaultCommit<Impl>::getCommittingThread()
 {
-    if (numThreads > 1) {
-        switch (commitPolicy) {
+    if (numThreads > 1)
+    {
+        switch (commitPolicy)
+        {
 
-          case CommitPolicy::Aggressive:
-            //If Policy is Aggressive, commit will call
-            //this function multiple times per
-            //cycle
+        case CommitPolicy::Aggressive:
+            // If Policy is Aggressive, commit will call
+            // this function multiple times per
+            // cycle
             return oldestReady();
 
-          case CommitPolicy::RoundRobin:
+        case CommitPolicy::RoundRobin:
             return roundRobin();
 
-          case CommitPolicy::OldestReady:
+        case CommitPolicy::OldestReady:
             return oldestReady();
 
-          default:
+        default:
             return InvalidThreadID;
         }
-    } else {
+    }
+    else
+    {
         assert(!activeThreads->empty());
         ThreadID tid = activeThreads->front();
 
         if (commitStatus[tid] == Running ||
             commitStatus[tid] == Idle ||
-            commitStatus[tid] == FetchTrapPending) {
+            commitStatus[tid] == FetchTrapPending)
+        {
             return tid;
-        } else {
+        }
+        else
+        {
             return InvalidThreadID;
         }
     }
 }
 
-template<class Impl>
+template <class Impl>
 ThreadID
 DefaultCommit<Impl>::roundRobin()
 {
     list<ThreadID>::iterator pri_iter = priority_list.begin();
-    list<ThreadID>::iterator end      = priority_list.end();
+    list<ThreadID>::iterator end = priority_list.end();
 
-    while (pri_iter != end) {
+    while (pri_iter != end)
+    {
         ThreadID tid = *pri_iter;
 
         if (commitStatus[tid] == Running ||
             commitStatus[tid] == Idle ||
-            commitStatus[tid] == FetchTrapPending) {
+            commitStatus[tid] == FetchTrapPending)
+        {
 
-            if (rob->isHeadReady(tid)) {
+            if (rob->isHeadReady(tid))
+            {
                 priority_list.erase(pri_iter);
                 priority_list.push_back(tid);
 
@@ -1557,7 +1664,7 @@ DefaultCommit<Impl>::roundRobin()
     return InvalidThreadID;
 }
 
-template<class Impl>
+template <class Impl>
 ThreadID
 DefaultCommit<Impl>::oldestReady()
 {
@@ -1567,33 +1674,42 @@ DefaultCommit<Impl>::oldestReady()
     list<ThreadID>::iterator threads = activeThreads->begin();
     list<ThreadID>::iterator end = activeThreads->end();
 
-    while (threads != end) {
+    while (threads != end)
+    {
         ThreadID tid = *threads++;
 
         if (!rob->isEmpty(tid) &&
             (commitStatus[tid] == Running ||
              commitStatus[tid] == Idle ||
-             commitStatus[tid] == FetchTrapPending)) {
+             commitStatus[tid] == FetchTrapPending))
+        {
 
-            if (rob->isHeadReady(tid)) {
+            if (rob->isHeadReady(tid))
+            {
 
                 const DynInstPtr &head_inst = rob->readHeadInst(tid);
 
-                if (first) {
+                if (first)
+                {
                     oldest = tid;
                     first = false;
-                } else if (head_inst->seqNum < oldest) {
+                }
+                else if (head_inst->seqNum < oldest)
+                {
                     oldest = tid;
                 }
             }
         }
     }
 
-    if (!first) {
+    if (!first)
+    {
         return oldest;
-    } else {
+    }
+    else
+    {
         return InvalidThreadID;
     }
 }
 
-#endif//__CPU_O3_COMMIT_IMPL_HH__
+#endif //__CPU_O3_COMMIT_IMPL_HH__

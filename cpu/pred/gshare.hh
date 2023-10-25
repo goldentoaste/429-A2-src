@@ -93,13 +93,15 @@ private:
   unsigned pcBitMask;
 
   // how many bits to use in each satCounter
-  // unsigned satBits; // XXX - dont implement for now, just use 2 bits sat counters
+  unsigned satBits; // XXX - dont implement for now, just use 2 bits sat counters
 
   // sat counters which is index by history xor pc
  std::vector<SatCounter> satCounters;
 
   // unsigned int to store state, is vector because need a separate state for each thread.
   std::vector<unsigned> globalHistory;
+
+  unsigned threshold;
 };
 
 #endif // __CPU_PRED_GSHARE_PRED_HH__

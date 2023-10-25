@@ -610,6 +610,7 @@ protected:
     Stats::Formula rate;
     // fetched forward ins
     Stats::Scalar branchForwardFetch;
+    
     Stats::Scalar branchBackwardFetch;
     // fetched branch targets that is determined at runtime.
     Stats::Scalar branchIndirectFetch;
